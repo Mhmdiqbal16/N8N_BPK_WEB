@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI BPK - Sistem Analisis Data Ekonomi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        #chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #chat-window::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        /* Styling Markdown untuk Jawaban AI */
+        .gemini-prose h1,
+        .gemini-prose h2 {
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.3rem;
+        }
+
+        .gemini-prose p {
+            margin-bottom: 1rem;
+            line-height: 1.7;
+            color: #334155;
+        }
+
+        .gemini-prose ul,
+        .gemini-prose ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+            list-style-type: disc;
+        }
+
+        .gemini-prose li {
+            margin-bottom: 0.4rem;
+        }
+
+        .gemini-prose strong {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        .gemini-prose table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.85rem;
+        }
+
+        .gemini-prose th,
+        .gemini-prose td {
+            border: 1px solid #e2e8f0;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .gemini-prose th {
+            background: #f8fafc;
+        }
+
+        /* Animasi */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Loading Indicator */
+        .typing-dots span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #3b82f6;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            80%,
+            100% {
+                transform: scale(0);
+            }
+
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        /* Google Sign-In styling */
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 24px;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        }
+
+        .google-btn:hover {
+            border-color: #3b82f6;
+            background: #f8fafc;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .google-btn:active {
+            transform: scale(0.98);
+        }
+
+        .google-btn svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        /* Divider */
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+        }
+
+        /* User profile badge in header */
+        .user-profile-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 12px 4px 4px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 50px;
+        }
+
+        .user-profile-badge img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+        }
+
+        /* Pulse animation for connecting state */
+        @keyframes pulse-ring {
+            0% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 h-screen flex flex-col overflow-hidden">
+
+    <!-- LOGIN MODAL -->
+    <div id="login-modal"
+        class="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-10 text-center space-y-8 fade-in">
+            <div class="w-24 h-24 mx-auto bg-white border border-slate-100 rounded-full p-3 shadow-sm">
+                <img src="https://www.pelajaran.co.id/wp-content/uploads/2017/04/BPK-Badan-Pemeriksa-Keuangan.jpg"
+                    alt="Logo BPK" class="w-full h-full object-contain">
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Portal Analisis AI BPK</h2>
+                <p class="text-slate-500 text-sm mt-2">Masuk menggunakan akun Google Anda untuk mengakses sistem</p>
+            </div>
+
+            <!-- Google Sign-In Button -->
+            <div class="space-y-5">
+                <button id="google-signin-btn" class="google-btn" onclick="handleGoogleSignIn()">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path
+                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                            fill="#4285F4" />
+                        <path
+                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                            fill="#34A853" />
+                        <path
+                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                            fill="#FBBC05" />
+                        <path
+                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                            fill="#EA4335" />
+                    </svg>
+                    Masuk dengan Google
+                </button>
+
+                <div class="login-divider">atau</div>
+
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    Pastikan Anda menggunakan akun Google yang telah terdaftar dalam sistem.
+                    Dengan masuk, Anda menyetujui kebijakan penggunaan data AI BPK.
+                </p>
+            </div>
+
+            <!-- Error message container -->
+            <div id="login-error"
+                class="hidden text-sm text-red-500 bg-red-50 border border-red-100 rounded-xl px-4 py-3 font-medium">
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="main-app" class="hidden h-screen flex flex-col">
+        <header
+            class="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+            <div class="flex items-center gap-4">
+                <div
+                    class="w-10 h-10 rounded-xl bg-white border border-slate-100 p-1 shadow-sm flex items-center justify-center">
+                    <img src="https://www.pelajaran.co.id/wp-content/uploads/2017/04/BPK-Badan-Pemeriksa-Keuangan.jpg"
+                        alt="BPK" class="w-full h-full object-contain">
+                </div>
+                <div>
+                    <h1 class="text-slate-900 font-bold text-lg tracking-tight leading-none">AI Analis BPK</h1>
+                    <div class="flex items-center gap-1.5 mt-1">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Terhubung</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- User Profile Badge -->
+                <div id="user-profile" class="user-profile-badge hidden">
+                    <img id="user-avatar" src="" alt="Avatar" referrerpolicy="no-referrer">
+                    <div class="text-right hidden sm:block">
+                        <div id="user-name" class="text-xs font-semibold text-slate-700 leading-tight"></div>
+                        <div id="user-email" class="text-[10px] text-slate-400 leading-tight"></div>
+                    </div>
+                </div>
+                <button id="logout-btn"
+                    class="text-xs font-bold text-red-500 hover:bg-red-50 px-4 py-2.5 rounded-xl border border-red-100 transition-all">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <main id="chat-window"
+            class="flex-1 overflow-y-auto bg-[#F9FAFB] p-4 md:p-10 space-y-10 max-w-5xl mx-auto w-full"></main>
+
+        <footer class="p-4 md:p-6 bg-white border-t border-slate-200">
+            <form id="chat-form" class="max-w-4xl mx-auto space-y-3">
+                <div id="file-preview" class="hidden px-4 py-2 flex items-center gap-3">
+                    <div
+                        class="bg-blue-50 border border-blue-100 px-4 py-2 rounded-xl flex items-center gap-3 shadow-sm">
+                        <span class="text-lg">📎</span>
+                        <span class="text-xs text-blue-700 font-semibold" id="file-name"></span>
+                        <button type="button" id="clear-file"
+                            class="text-blue-400 hover:text-red-500 transition-colors font-bold text-lg">&times;</button>
+                    </div>
+                </div>
+
+                <div
+                    class="flex flex-col md:flex-row gap-3 items-end bg-white border border-slate-200 rounded-[2rem] p-2 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-300 transition-all">
+                    <div class="flex items-center w-full px-2">
+                        <label for="file-input"
+                            class="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full cursor-pointer transition-all">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg>
+                        </label>
+                        <input type="file" id="file-input" class="hidden">
+
+                        <textarea id="chat-input" rows="1" placeholder="Masukkan instruksi analisis atau pertanyaan..."
+                            class="flex-1 bg-transparent border-none focus:ring-0 py-3 px-4 text-slate-700 outline-none text-sm resize-none"
+                            oninput="this.style.height = '';this.style.height = this.scrollHeight + 'px'"></textarea>
+
+                        <button type="submit"
+                            class="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 shadow-md transition-all transform active:scale-90">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M5 13l4 4L19 7" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <p class="text-[10px] text-center text-slate-400 font-medium">Sistem ini menggunakan AI untuk analisis
+                    data ekonomi Aceh (LPE, TPT, IPM, P0)</p>
+            </form>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================================
+        // KONFIGURASI — Ganti dengan Client ID Google OAuth Anda
+        // ============================================================
+        const GOOGLE_CLIENT_ID = '182318596424-bdf6u05jsnhulqrf8h9mntuecsr4sgce.apps.googleusercontent.com';
+
+        const STORAGE_KEY = 'bpk_chat_v2';
+        const AUTH_KEY = 'bpk_google_user';
+        const WEBHOOK_URL = 'https://cloudtogether.site/webhook-test/71d93445-8c98-41d3-8d61-4894c5e60f10';
+
+        const loginModal = document.getElementById('login-modal');
+        const mainApp = document.getElementById('main-app');
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const fileInput = document.getElementById('file-input');
+        const chatInput = document.getElementById('chat-input');
+
+        // --- GOOGLE OAUTH AUTHENTICATION ---
+
+        // Decode JWT token dari Google
+        function decodeJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(
+                    atob(base64).split('').map(c =>
+                        '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+                    ).join('')
+                );
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Callback setelah Google Sign-In berhasil
+        function handleCredentialResponse(response) {
+            const userData = decodeJwt(response.credential);
+
+            if (!userData) {
+                showLoginError('Gagal memproses data autentikasi. Silakan coba lagi.');
+                return;
+            }
+
+            // Simpan data user ke localStorage
+            const userInfo = {
+                name: userData.name,
+                email: userData.email,
+                picture: userData.picture,
+                credential: response.credential,
+                loginTime: new Date().toISOString()
+            };
+
+            localStorage.setItem(AUTH_KEY, JSON.stringify(userInfo));
+            showApp(userInfo);
+        }
+
+        // Tampilkan error di login modal
+        function showLoginError(message) {
+            const errorEl = document.getElementById('login-error');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            setTimeout(() => errorEl.classList.add('hidden'), 5000);
+        }
+
+        // Inisialisasi Google Identity Services
+        function initGoogleSignIn() {
+            if (typeof google === 'undefined' || !google.accounts) {
+                // Library belum dimuat, retry setelah 500ms
+                setTimeout(initGoogleSignIn, 500);
+                return;
+            }
+
+            google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: handleCredentialResponse,
+                auto_select: false,
+                cancel_on_tap_outside: true
+            });
+        }
+
+        // Handle klik tombol Sign In
+        function handleGoogleSignIn() {
+            if (GOOGLE_CLIENT_ID === 'GANTI_DENGAN_CLIENT_ID_ANDA.apps.googleusercontent.com') {
+                showLoginError('⚠️ Client ID belum dikonfigurasi. Silakan ganti GOOGLE_CLIENT_ID di source code.');
+                return;
+            }
+
+            if (typeof google === 'undefined' || !google.accounts) {
+                showLoginError('Library Google belum dimuat. Pastikan koneksi internet Anda aktif.');
+                return;
+            }
+
+            // Trigger Google One Tap / popup
+            google.accounts.id.prompt((notification) => {
+                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                    // Fallback: tampilkan popup sign-in standar
+                    google.accounts.oauth2.initTokenClient({
+                        client_id: GOOGLE_CLIENT_ID,
+                        scope: 'openid profile email',
+                        callback: (tokenResponse) => {
+                            // Fetch user info dari Google
+                            fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                                headers: { 'Authorization': 'Bearer ' + tokenResponse.access_token }
+                            })
+                                .then(res => res.json())
+                                .then(userData => {
+                                    const userInfo = {
+                                        name: userData.name,
+                                        email: userData.email,
+                                        picture: userData.picture,
+                                        accessToken: tokenResponse.access_token,
+                                        loginTime: new Date().toISOString()
+                                    };
+                                    localStorage.setItem(AUTH_KEY, JSON.stringify(userInfo));
+                                    showApp(userInfo);
+                                })
+                                .catch(() => {
+                                    showLoginError('Gagal mengambil data profil. Silakan coba lagi.');
+                                });
+                        }
+                    }).requestAccessToken();
+                }
+            });
+        }
+
+        // Tampilkan aplikasi utama
+        function showApp(userInfo) {
+            loginModal.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+
+            // Update UI profil user di header
+            const profileEl = document.getElementById('user-profile');
+            document.getElementById('user-avatar').src = userInfo.picture || '';
+            document.getElementById('user-name').textContent = userInfo.name || '';
+            document.getElementById('user-email').textContent = userInfo.email || '';
+            profileEl.classList.remove('hidden');
+
+            if (!userInfo.picture) {
+                // Jika tidak ada foto, tampilkan inisial
+                const avatarEl = document.getElementById('user-avatar');
+                avatarEl.style.display = 'none';
+                const initialsEl = document.createElement('div');
+                initialsEl.className = 'w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold';
+                initialsEl.textContent = (userInfo.name || 'U').charAt(0).toUpperCase();
+                avatarEl.parentNode.insertBefore(initialsEl, avatarEl);
+            }
+
+            loadHistory();
+        }
+
+        // Inisialisasi aplikasi
+        function init() {
+            const savedUser = localStorage.getItem(AUTH_KEY);
+            if (savedUser) {
+                try {
+                    const userInfo = JSON.parse(savedUser);
+                    showApp(userInfo);
+                } catch (e) {
+                    localStorage.removeItem(AUTH_KEY);
+                }
+            }
+            initGoogleSignIn();
+        }
+
+        // --- LOGOUT ---
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            const savedUser = localStorage.getItem(AUTH_KEY);
+            if (savedUser) {
+                try {
+                    const userInfo = JSON.parse(savedUser);
+                    // Revoke Google token jika ada
+                    if (userInfo.credential && typeof google !== 'undefined' && google.accounts) {
+                        google.accounts.id.revoke(userInfo.email, () => { });
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            localStorage.removeItem(AUTH_KEY);
+            location.reload();
+        });
+
+        // --- CHAT LOGIC ---
+        function appendMessage(text, isUser = false, save = true, loadingId = null) {
+            const wrapper = document.createElement('div');
+            if (loadingId) wrapper.id = loadingId;
+            wrapper.className = isUser ? "flex flex-row-reverse gap-4 fade-in items-start" : "flex gap-4 fade-in items-start";
+
+            // Untuk user, tampilkan foto profil Google
+            let userAvatar = '<div class="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shrink-0 text-[10px] font-bold text-white shadow-md">USER</div>';
+            try {
+                const savedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+                if (savedUser.picture) {
+                    userAvatar = `<img src="${savedUser.picture}" referrerpolicy="no-referrer" class="w-10 h-10 rounded-2xl shrink-0 shadow-md object-cover border-2 border-blue-100">`;
+                } else if (savedUser.name) {
+                    const initial = savedUser.name.charAt(0).toUpperCase();
+                    userAvatar = `<div class="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center shrink-0 text-sm font-bold text-white shadow-md">${initial}</div>`;
+                }
+            } catch (e) { /* fallback ke default */ }
+
+            const avatar = isUser
+                ? userAvatar
+                : `<div class="w-10 h-10 rounded-2xl bg-white border border-slate-100 p-1.5 shrink-0 shadow-sm"><img src="https://www.pelajaran.co.id/wp-content/uploads/2017/04/BPK-Badan-Pemeriksa-Keuangan.jpg" class="w-full h-full object-contain"></div>`;
+
+            const content = isUser
+                ? `<div class="text-sm text-slate-800 bg-white border border-slate-200 px-5 py-3 rounded-3xl rounded-tr-none shadow-sm max-w-[80%]">${text}</div>`
+                : `<div class="gemini-prose text-sm w-full bg-white md:bg-transparent md:p-0 p-4 rounded-2xl border border-slate-100 md:border-none">${marked.parse(text)}</div>`;
+
+            wrapper.innerHTML = avatar + content;
+            chatWindow.appendChild(wrapper);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+
+            if (save) {
+                let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                history.push({ text, isUser });
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+            }
+        }
+
+        function loadHistory() {
+            let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            // Tampilkan greeting dengan nama user
+            let userName = 'Pengguna';
+            try {
+                const savedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+                if (savedUser.name) userName = savedUser.name.split(' ')[0];
+            } catch (e) { /* fallback */ }
+
+            if (history.length === 0) {
+                appendMessage(`Selamat datang, **${userName}** 👋\n\nSaya siap membantu Anda melakukan analisis data ekonomi daerah. Silakan lampirkan file atau ketik pertanyaan Anda.`, false, false);
+            } else {
+                history.forEach(m => appendMessage(m.text, m.isUser, false));
+            }
+        }
+
+        // --- FILE HANDLING ---
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                document.getElementById('file-name').textContent = fileInput.files[0].name;
+                document.getElementById('file-preview').classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('clear-file').addEventListener('click', () => {
+            fileInput.value = '';
+            document.getElementById('file-preview').classList.add('hidden');
+        });
+
+        // --- HELPER: Konversi file ke base64 ---
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    // result = "data:mime/type;base64,XXXXX"
+                    // Kita ambil bagian base64 saja
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // --- SUBMISSION ---
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            const file = fileInput.files[0];
+
+            if (!text && !file) return;
+
+            // UI Update
+            let userDisplay = text;
+            if (file) userDisplay += `<br><span class="text-[10px] font-bold text-blue-500 italic">📎 Mengunggah: ${file.name}</span>`;
+            appendMessage(userDisplay, true);
+
+            // Reset Input
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            document.getElementById('file-preview').classList.add('hidden');
+
+            // Show Loading
+            const loadingId = "loader-" + Date.now();
+            const loaderHtml = `<div class="typing-dots flex gap-1 items-center"><span></span><span></span><span></span></div> <span class="text-xs text-slate-400 font-medium ml-2">AI BPK sedang memproses data...</span>`;
+            appendMessage(loaderHtml, false, false, loadingId);
+
+            // Bangun payload JSON
+            const payload = {
+                chat_message: text || "Analisis file yang saya lampirkan."
+            };
+
+            // Konversi file ke base64 jika ada
+            if (file) {
+                try {
+                    const base64Data = await fileToBase64(file);
+                    payload.file = {
+                        name: file.name,
+                        type: file.type || 'application/octet-stream',
+                        size: file.size,
+                        data: base64Data
+                    };
+                } catch (fileErr) {
+                    if (document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+                    appendMessage("❌ **Gagal membaca file.** Pastikan file tidak rusak dan coba lagi.", false);
+                    fileInput.value = '';
+                    return;
+                }
+            }
+
+            // Tambahkan info user Google ke payload
+            try {
+                const savedUser = JSON.parse(localStorage.getItem(AUTH_KEY) || '{}');
+                if (savedUser.email) payload.user_email = savedUser.email;
+                if (savedUser.name) payload.user_name = savedUser.name;
+            } catch (e) { /* ignore */ }
+
+            try {
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error();
+
+                const result = await response.text();
+                document.getElementById(loadingId).remove();
+                appendMessage(result, false);
+
+            } catch (err) {
+                if (document.getElementById(loadingId)) document.getElementById(loadingId).remove();
+                appendMessage("❌ **Sistem Sibuk.** Mohon pastikan koneksi n8n Anda aktif atau coba beberapa saat lagi.", false);
+            } finally {
+                fileInput.value = '';
+            }
+        });
+
+        // Trigger submit on Enter
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+
+        init();
+    </script>
+</body>
+
+</html>
